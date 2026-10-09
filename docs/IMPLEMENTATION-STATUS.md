@@ -1,38 +1,33 @@
-# Scenario A — Verified implementation status (2026-10-09)
+# Implementation Status — 2026-10-09 (Scenario A)
 
-| Milestone | Actual verified state | Evidence and remaining limits |
-|---|---|---|
-| M0 Hono + no-build Vue frontend | Implemented and verified | Node 24.21, Hono GET /healthz, GET / and GET /js/main.js returned 200; Playwright Vue mounted and Tailwind applied |
-| M1 SQLite migrations, seed, backup and recovery | Implemented and verified | Schema migration registry 001_initial, WAL, FK, constraints and triggers; 2 dealers, 4 bays, 4 technicians; safe online SQLite backup, restored copy integrity ok with 3 demo appointments |
-| M2 Availability engine / REST API | Implemented and tested | Full-interval skills, shifts, hours, bay compatibility, blackouts; positive/negative automated tests |
-| M3 Booking, idempotency and true multi-process concurrency | Implemented and tested | 22/22 Node tests; 10 workers synchronized by ready barrier => exactly 1 accepted and 9 conflicts; HTTP 201/200/409 and DB proof |
-| M4 Vue 3 + Tailwind CDN reviewer UI | Implemented and headless-tested | Playwright Desktop 1280px and Mobile 390px screenshot, zero JS/network errors, 14 free slots, browser create+cancel success; independent manual accessibility review pending |
-| M5 Observability and hardening | Partially implemented | Request IDs, structured timing logs, demo write token for external exposure, 0 npm-audit vulnerabilities at test time; broader auth/rate limits/load tests not complete |
-| M6 Reviewer evidence, docs and Kaggle notebook | Largely implemented | Original full System Design/Implementation Plan copied with verified SHA256; 12-cell reviewer notebook executed end-to-end successfully; evidence scripts and browser screenshots generated; public GitHub repository not created |
-| M7 Video and final submission | Pending | Record a 5–10 min demo and finalize a reviewed GitHub repository |
+## Verified at current Kaggle session
 
-## Verifiable acceptance summary
-- **A-1** Resource-constrained request: PASS in backend and browser E2E.
-- **A-2** Real-time availability: PASS in domain and HTTP tests, with transaction-time recheck.
-- **A-3** Confirmed persistent appointment: PASS including restart/read, SQLite backup and independent-process race verification.
+- Device: `bd5d6d0e-c31f-4843-8330-9a5fed92a520`; hostname `6230ad2027a4`.
+- Repo: `/kaggle/working/Keyloop-Scenario-A-Unified-Service-Scheduler`, baseline HEAD `a4ff4b6` on `master`.
+- Node.js v24.21.0 / npm 11.19.0, Hono + SQLite local WAL, Vue ESM + Tailwind browser CDN (no build, no Docker).
+- Local `/readyz`: HTTP 200, database `ok`.
+- `npm test`: 29 passed, 0 failed, including genuine 10-process concurrency.
+- `npm run evidence`: `integrity=ok`, 6 dealers, 20 customers, 20 vehicles, 32 technicians, 32 bays and 39 appointments; no overlapping confirmed tech/bay.
+- `npm run backup`: `BACKUP_INTEGRITY=ok APPOINTMENTS=39`.
+- Friendly booking confirmation isolated browser E2E: PASS, zero page errors.
+- Appointment list reviewer UX browser test: PASS, 39 cards, 6 cancelled filtered, empty-search works, zero page errors.
+- Existing Quick Tunnel observed running; URL remains ephemeral.
 
-The backend was selected as the fully implemented service layer; frontend is a working companion layer without a build tool. All test evidence is synthetic. Manual accessibility, externally reachable public URL and official submission are not yet claimed complete.
+## New reviewer improvements
 
-## Evidence paths
-- `evidence/final-node-tests.log`
-- `evidence/http-smoke.json`, `evidence/runtime-evidence.json`
-- `evidence/browser-smoke.json`, `evidence/browser-e2e.json`
-- `evidence/browser-desktop.png`, `evidence/browser-mobile.png`
-- `evidence/browser-booked.png`, `evidence/browser-cancelled.png`
-- `backups/scheduler-safe-backup.sqlite` (offline-consistent SQLite backup)
+- Appointment detail cards with human-readable customer, vehicle, service, dealership, local times, technician and bay.
+- Status and dealership filtering plus text search; technical IDs in expandable reviewer evidence.
+- Added `scripts/appointment-reviewer-browser-test.js` and updated `docs/REVIEWER-TEST-GUIDE.md`.
+- Extended Kaggle notebook with up-to-date simulation and reviewer QA cells. **The modified notebook has not yet been re-executed end-to-end**. Its existing booking proof creates a synthetic record in live SQLite; make a fresh native backup before running the entire notebook.
 
-## Restore and verify
-Run `bash scripts/bootstrap-kaggle.sh` from the portable extracted source on a new Kaggle environment. Never overwrite an existing database. Copying a live WAL database file directly is unsafe; use `npm run backup` for online snapshots.
+## Still pending (not PASS)
 
-## Demo data / reviewer guide enhancement (2026-10-09)
-- Expanded persistent synthetic dataset to 6 dealerships, 20 customers, 20 vehicles, 32 technicians, 32 service bays, 10 service types and 10 skills.
-- Appointments: 15 total (12 confirmed, 3 cancelled) after idempotent demo fixture run; existing 3 preserved.
-- `npm run db:seed:rich` and `npm run db:seed:demo` are repeatable and preserve existing appointments.
-- Reviewer manual: `docs/REVIEWER-TEST-GUIDE.md`; browser page `/reviewer-guide`, linked from the homepage.
-- Tests increased to 26/26 PASS. Public browser smoke and desktop/mobile viewport checks passed.
-- Cloudflare Quick Tunnel URL is temporary; do not claim stable public hosting or completed manual accessibility QA.
+- Manual Windows 10 Narrator, keyboard/focus, Android Chrome touch, responsive and contrast testing.
+- End-to-end run of the updated reviewer notebook.
+- Stable public submission URL, GitHub repo creation/push, submission package and recorded 5–10 minute video.
+- Higher-load security tests, DST coverage, multi-node architecture.
+- Any GitHub publish/push requires explicit owner request; do not expose demo token or PAT.
+
+## Safety
+
+Do not reset live SQLite, rerun destructive seed, copy an active WAL database as if it were a consistent backup, or delete evidence. Simulators use isolated SQLite. The local demo token under `.runtime` stays private and is intentionally excluded from archives.

@@ -90,3 +90,23 @@ On the main page, scroll to **Why does the scheduler accept or reject bookings?*
 3. Observe the decision table, allocated resource, per-request reason and SQLite integrity. Refresh the page: the actual appointment list is **unchanged** because both experiments use disposable SQLite databases.
 
 The simulation intentionally uses the baseline restricted resource pair; the larger rich dataset is not used to change its capacity.
+
+
+## Friendly appointment list and booking confirmation (current reviewer UI)
+
+After booking, the confirmation panel shows customer, vehicle, service and duration, dealership-local start/end time, assigned technician and service bay, plus a readable explanation of why capacity was accepted. Technical IDs remain behind an expandable reviewer-only section.
+
+The **Service appointments** section displays appointment detail cards rather than bare IDs. Filter by status (**All / Confirmed / Cancelled**), dealership, or search customer, vehicle, service and assigned resources. Filters affect display only and never change SQLite records. Expand **Why this appointment was accepted · technical evidence** to inspect the underlying IDs and scheduling constraints. The latest 100 records appear newest-created first. Cancellation remains protected by the demo write token, and reviewers should only cancel their own new test bookings.
+
+The public interactive simulators use isolated SQLite databases. The displayed confirmed/rejected decisions can be cross-checked against the **SQLite integrity** and **confirmed rows in isolated SQLite** fields. The two-request conflict is sequential; the ten-request race uses ten independent Node.js child processes after a barrier. Do not describe the sequential conflict as concurrent.
+
+Suggested verification without writing to live SQLite:
+
+```bash
+npm test
+npm run evidence
+PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scripts/appointment-reviewer-browser-test.js
+PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scripts/confirmation-browser-test.js
+```
+
+The appointment reviewer browser test reads the current local list and verifies visible cards, cancelled status filtering, empty search results and browser errors; it does not create or cancel live records. The confirmation test uses an isolated SQLite database. Neither automated test substitutes for physical Android Chrome, Windows Narrator, keyboard focus or contrast checks; record manual QA results separately.
