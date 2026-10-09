@@ -13,6 +13,7 @@ export function context(db,dealerId,serviceId,startAt){
  if(local.toMillis()<=Date.now())fail(422,'PAST_TIME','Future date required');
  if(local.minute%30||local.second||local.millisecond)fail(400,'INVALID_SLOT','Slot step is 30 minutes');
  const end=local.plus({minutes:service.duration_minutes});
+ if(local.offset!==end.offset)fail(422,'DST_TRANSITION','Service interval crosses a daylight-saving time change');
  if(end.toISODate()!==local.toISODate())fail(422,'CLOSED','Crosses closing day');
  const from=local.hour*60+local.minute,to=from+service.duration_minutes;
  if(!db.prepare('SELECT 1 FROM dealership_hours WHERE dealership_id=? AND weekday=? AND open_minute<=? AND close_minute>=?').get(dealerId,local.weekday,from,to))fail(422,'CLOSED','Outside hours');

@@ -67,3 +67,12 @@ The new validation/DST test's name concerning no double-booking reflects two dis
 The suite includes earlier 41/41 PASS tests. Follow-up full regression: 45/45 PASS (0 failed, 0 skipped); browser checks must be reported separately with their observed exit codes. This note does not replace the historical 8 PASS / 1 FAIL malformed `+99:00` finding before the input-validation fix.
 
 **Remaining priorities:** T19 booking behavior in a DST IANA zone; T20 stale-slot E2E/manual Narrator/Android/keyboard/contrast; T21 richer observability tests and request-body limits where required by the implementation plan. Do not mark the 21-case audit fully closed based on the 45/45 automated suite alone.
+
+## DST booking engine and stale-slot browser evidence — 2026-10-10 ICT
+
+- **T19 booking DST: PASS for executed engine cases.** Added `tests/dst-booking.test.js`: service intervals spanning spring-forward or fall-back offset transitions are rejected with `DST_TRANSITION` and create no rows; the explicit second fall-fold instant can be booked independently when it fits a shift; different encodings of the same UTC instant cannot create overlapping bookings. The initial run had **2 FAIL / 2 PASS**, proving the missing transition guard; after changing `src/domain/booking.js` the focused run achieved **4/4 PASS**. This is an explicit conservative design choice: reject DST-crossing intervals instead of guessing wall-clock semantics. It does not prove every worldwide timezone/DST edge case.
+- **T20 stale-slot browser: PASS for automated scenario.** Added `scripts/stale-slot-browser-test.js`. With an isolated SQLite/Hono server the UI selects 09:00, a second user books that slot, the original client receives HTTP 409 and shows a friendly conflict message, refreshes availability, removes 09:00 and leaves only the winner row. No live database writes. Manual accessibility (Windows Narrator, actual Android Chrome, keyboard/contrast) remains **NOT VERIFIED** in this round.
+- **Full automated regression: 49/49 PASS**, no skipped tests. The sandbox browser stale-slot test separately reports `STALE_SLOT_BROWSER=PASS`.
+- **T21 observability/security** remains PARTIAL for richer metrics, request-body caps and exhaustive redaction assertions; previous request-ID/token canary tests remain PASS.
+
+Historical failures remain visible above. No claim of complete T20 accessibility or T21 operational-hardening acceptance.
