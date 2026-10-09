@@ -49,3 +49,21 @@
 6. Re-run full automated suite + browser tests, package sanitized evidence and notebook, then proceed to submission.
 
 **Safety:** No destructive seed/reset on live SQLite. No token/PAT copied to evidence. Do not mark T10/T17/T19/T20/T21 fully PASS until missing scenarios are exercised.
+
+## Follow-up Acceptance Verification — 2026-10-10 ICT
+
+Run on Kaggle device `bd5d6d0e-c31f-4843-8330-9a5fed92a520`. All added tests use temporary SQLite databases. Live SQLite was backed up with the SQLite online backup API before these changes and contained 44 appointments with integrity `ok`.
+
+| Group | Current status | Evidence |
+|---|---|---|
+| T10 invalid references/input | PASS for executed negative matrix | `tests/validation-dst.test.js`: missing/typed fields, invalid customer/vehicle/dealer/service, mismatched owner, bad time, past/closed time, malformed JSON; zero rows persisted |
+| T17 actual server restart | PASS | `tests/server-restart.test.js`: independent Hono child process, POST booking, SIGTERM, restart on same temporary DB, GET confirmed |
+| T19 DST | PARTIAL | `tests/validation-dst.test.js` confirms Luxon gap normalization and fold offset distinction, **but does not verify application booking rejection/acceptance around DST transitions**. No claim of full policy coverage |
+| T20 reviewer accessibility | PARTIAL | Existing browser tests cover UI rendering and interaction. Windows Narrator, actual phone touch, keyboard/focus audit and stale-slot forced-conflict still require independent verification |
+| T21 request logging/security | PARTIAL | `tests/observability-security.test.js`: request ID header/error correlation, secret canary absent from structured log and JSON error. Detailed metrics/latency histograms and exhaustive log redaction remain unverified |
+
+The new validation/DST test's name concerning no double-booking reflects two distinct UTC instants; it is **not a booking-engine DST acceptance test**. Production dealer seed uses `Asia/Ho_Chi_Minh` (no DST). Explicit UTC instants should not be confused with wall-clock-only booking requests.
+
+The suite includes earlier 41/41 PASS tests. Follow-up full regression: 45/45 PASS (0 failed, 0 skipped); browser checks must be reported separately with their observed exit codes. This note does not replace the historical 8 PASS / 1 FAIL malformed `+99:00` finding before the input-validation fix.
+
+**Remaining priorities:** T19 booking behavior in a DST IANA zone; T20 stale-slot E2E/manual Narrator/Android/keyboard/contrast; T21 richer observability tests and request-body limits where required by the implementation plan. Do not mark the 21-case audit fully closed based on the 45/45 automated suite alone.
