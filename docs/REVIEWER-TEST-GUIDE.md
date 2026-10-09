@@ -4,7 +4,7 @@
 
 ## Access and prerequisites
 
-Open the **public demo link** supplied by the project author (a Cloudflare Quick Tunnel URL can change after restart). The project serves the browser and REST API through the same origin. Use a recent desktop browser; the interface also supports narrow mobile screens. **No account required for read-only exploration.** The page has a **Demo write token** field: only the author can provide an authorized token if you are expected to perform Create/Cancel. Never copy the token into public reports, screenshots, or GitHub issues.
+Open the **public demo link** supplied by the project author (a Cloudflare Quick Tunnel URL can change after restart). The project serves the browser and REST API through the same origin. Use a recent desktop browser; the interface also supports narrow mobile screens. **No account required for read-only exploration.** The page first displays a **Read-only preview — Booking access required** explanation, followed by a **Demo write token** field and **Verify token** button: only the author can provide an authorized token if you are expected to perform Create/Cancel. Never copy the token into public reports, screenshots, or GitHub issues.
 
 For local execution on an authorized checkout:
 ```bash
@@ -76,3 +76,7 @@ Create requests require `Idempotency-Key`, a JSON payload with `customerId`, `ve
 Review `npm test`, `npm run test:concurrency`, `npm run test:browser`, `npm run test:browser:e2e`, `notebooks/Scenario_A_Reviewer_Demo.ipynb` and the runtime files under `evidence/`. Concurrency test uses isolated temporary SQLite data and will **not** change demo bookings. Browser E2E and HTTP smoke tests **do** create/cancel synthetic bookings in the configured environment. The public demo is accessible only while the temporary tunnel and Kaggle runtime stay online.
 
 Manual screen-reader and physical-phone checks must be recorded as separate human verification, not inferred from Playwright results.
+
+## If booking says a demo token is required
+
+This is **not** a scheduling failure: the temporary public demo protects writes to its shared SQLite database. You can continue exploring dealerships, availability and existing bookings without any credential. To test booking or cancellation, contact the project owner through your existing review channel for a private demo write token, enter it on the home page and click **Verify token**. If verification rejects the token, check for accidental whitespace or ask for a new token. Never post tokens to public comments or issue trackers. When no token has been entered, Confirm and Cancel controls are disabled so users do not unexpectedly encounter a 403.

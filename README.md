@@ -120,3 +120,7 @@ Open the built-in **/reviewer-guide** page linked from the homepage, or read the
 - Browser CDN availability is required for first load; no offline bundle.
 - No production authentication, session control, rate-limiting, notifications, or multi-host SQLite coordination.
 - Complete submission docs, Kaggle demonstration notebook and 5–10 minute video remain to be finalized.
+
+## Friendly demo access handling
+
+On public tunnels, browsing is open but Create/Cancel require the private demo write token. The page exposes a read-only explanation, token verification action, disabled write buttons when no token is supplied, and contextual resolution messages for invalid/missing tokens. The read-only API endpoint is `GET /api/v1/demo-access`; `POST /api/v1/demo-access/verify` checks a token without changing bookings.
