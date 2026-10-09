@@ -110,3 +110,11 @@ PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scrip
 ```
 
 The appointment reviewer browser test reads the current local list and verifies visible cards, cancelled status filtering, empty search results and browser errors; it does not create or cancel live records. The confirmation test uses an isolated SQLite database. Neither automated test substitutes for physical Android Chrome, Windows Narrator, keyboard focus or contrast checks; record manual QA results separately.
+
+## Sandbox vs live appointment counters (reviewer clarification)
+
+The **Interactive engineering demo** uses disposable SQLite databases. Results in its table are sandbox-only, not records in the shared live booking database. The UI explicitly says **Simulation only — no appointments added to the live database.** A conflict run has two requests (one confirmed, one rejected); the concurrent run has ten independent worker requests (one confirmed, nine rejected). The result counts, sandbox integrity, and sandbox persisted-row count are evidence for the isolated simulation only.
+
+The **Service appointments** heading instead reports true live totals via `GET /api/v1/appointments/stats`. This endpoint aggregates all persisted appointments in live SQLite and reports `total`, `confirmed`, and `cancelled`, independently of the newest 100 displayed records and any client-side filters. For example, a live count of 42 appointments may remain at 42 after running either simulation; this is intentional, not a missing booking. Actual authorized booking/cancellation changes live statistics after refresh.
+
+Run `PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scripts/simulation-live-isolation-browser-test.js` to verify the interactive ten-request demonstration while checking live appointment counters before and after the run. This test writes **only to isolated sandbox SQLite**, does not require the demo write token, and should leave live counts unchanged. The simulator has a cooldown, so rerun later if another simulation was just performed.
