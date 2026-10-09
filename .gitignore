@@ -10,3 +10,5 @@ backups/
 
 # Generated reviewer runtime, evidence and native browser binaries
 evidence/
+
+.runtime/
