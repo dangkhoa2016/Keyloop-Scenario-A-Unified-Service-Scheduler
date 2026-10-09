@@ -5,6 +5,23 @@ import {serveStatic} from '@hono/node-server/serve-static';
 import {DomainError,available,book,getAppointment,cancel} from './domain/booking.js';
 import {fileURLToPath} from 'node:url';
 const publicDir=fileURLToPath(new URL('../public/',import.meta.url));
+const MAX_JSON_BODY_BYTES=16384;
+async function boundedJson(c){
+ const len=c.req.header('content-length');
+ if(len&&Number(len)>MAX_JSON_BODY_BYTES)throw new DomainError(413,'PAYLOAD_TOO_LARGE','JSON payload exceeds 16 KiB');
+ const stream=c.req.raw.body;if(!stream)throw new DomainError(400,'INVALID_JSON','JSON body required');
+ const reader=stream.getReader();const chunks=[];let total=0;
+ try{
+  while(true){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;
+   if(total>MAX_JSON_BODY_BYTES){await reader.cancel().catch(()=>{});throw new DomainError(413,'PAYLOAD_TOO_LARGE','JSON payload exceeds 16 KiB')}
+   chunks.push(value);
+  }
+ }finally{reader.releaseLock()}
+ const bytes=new Uint8Array(total);let offset=0;
+ for(const x of chunks){bytes.set(x,offset);offset+=x.byteLength}
+ try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes))}catch{throw new DomainError(400,'INVALID_JSON','Malformed JSON request')}
+}
+
 function presentAppointment(db,a){
  const extra=db.prepare(`SELECT c.display_name AS customerName,v.make||' '||v.model AS vehicleName,d.name AS dealershipName,d.time_zone AS timeZone,s.name AS serviceName,s.duration_minutes AS durationMinutes,t.name AS technicianName,b.name AS bayName FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN vehicles v ON v.id=a.vehicle_id JOIN dealerships d ON d.id=a.dealership_id JOIN service_types s ON s.id=a.service_type_id JOIN technicians t ON t.id=a.technician_id JOIN service_bays b ON b.id=a.service_bay_id WHERE a.id=?`).get(a.id);
  return {...a,details:extra,explanation:'A qualified technician and a compatible service bay were available for the full service duration when the booking was committed.'};
@@ -17,7 +34,7 @@ export function createApp(db){
  app.get('/healthz',c=>c.json({status:'ok'}));
  app.get('/api/v1/demo-access',c=>c.json({data:{writeProtected:!!process.env.DEMO_WRITE_TOKEN||process.env.PUBLIC_DEMO==='1',readOnlyWithoutToken:true,tokenRequired:!!process.env.DEMO_WRITE_TOKEN,help:'Browse freely. To create or cancel bookings on this public demo, request the private write token from the demo owner.'}}));
  app.get('/readyz',c=>{const v=db.pragma('integrity_check',{simple:true});return c.json({status:v==='ok'?'ready':'unhealthy',database:v},v==='ok'?200:503);});
- app.post('/api/v1/demo/simulate',async c=>{const ip=(c.req.header('cf-connecting-ip')||'anonymous').slice(0,128);const now=Date.now();if(simulationBusy)throw new DomainError(429,'SIMULATION_BUSY','Another simulation is running. Try again shortly.');if(now-(simulationCalls.get(ip)||0)<20000)throw new DomainError(429,'SIMULATION_COOLDOWN','Please wait 20 seconds before the next simulation.');const data=await c.req.json().catch(()=>({}));if(!['conflict','concurrent'].includes(data.mode))throw new DomainError(400,'INVALID_SIMULATION','Choose conflict or concurrent.');simulationBusy=true;simulationCalls.set(ip,now);for(const [k,t] of simulationCalls)if(now-t>60000)simulationCalls.delete(k);try{return c.json({data:await runSimulation(data.mode)});}finally{simulationBusy=false;}});
+ app.post('/api/v1/demo/simulate',async c=>{const ip=(c.req.header('cf-connecting-ip')||'anonymous').slice(0,128);const now=Date.now();if(simulationBusy)throw new DomainError(429,'SIMULATION_BUSY','Another simulation is running. Try again shortly.');if(now-(simulationCalls.get(ip)||0)<20000)throw new DomainError(429,'SIMULATION_COOLDOWN','Please wait 20 seconds before the next simulation.');const data=await boundedJson(c);if(!['conflict','concurrent'].includes(data.mode))throw new DomainError(400,'INVALID_SIMULATION','Choose conflict or concurrent.');simulationBusy=true;simulationCalls.set(ip,now);for(const [k,t] of simulationCalls)if(now-t>60000)simulationCalls.delete(k);try{return c.json({data:await runSimulation(data.mode)});}finally{simulationBusy=false;}});
  app.get('/api/v1/dealerships',c=>c.json({data:db.prepare('SELECT * FROM dealerships ORDER BY id').all()}));
  app.get('/api/v1/customers',c=>c.json({data:db.prepare('SELECT * FROM customers ORDER BY id').all()}));
  app.get('/api/v1/customers/:id/vehicles',c=>c.json({data:db.prepare('SELECT * FROM vehicles WHERE customer_id=?').all(c.req.param('id'))}));
@@ -28,7 +45,7 @@ export function createApp(db){
  app.get('/api/v1/appointments/:id',c=>c.json({data:presentAppointment(db,getAppointment(db,c.req.param('id')))}));
  const guard=async(c,next)=>{if((process.env.PUBLIC_DEMO==='1'||process.env.HOST==='0.0.0.0')&&!process.env.DEMO_WRITE_TOKEN)throw new DomainError(403,'PUBLIC_WRITE_DISABLED','Demo booking is temporarily disabled. Please contact the demo owner.');if(process.env.DEMO_WRITE_TOKEN){const supplied=c.req.header('X-Demo-Write-Token');if(!supplied)throw new DomainError(403,'DEMO_TOKEN_REQUIRED','Booking is protected. Enter the demo write token provided by the owner.');if(supplied!==process.env.DEMO_WRITE_TOKEN)throw new DomainError(403,'DEMO_TOKEN_INVALID','That token is not valid. Check the token or request a new one from the demo owner.');}await next();};
  app.post('/api/v1/demo-access/verify',guard,c=>c.json({data:{authorized:true}}));
- app.post('/api/v1/appointments',guard,async c=>{const p=await c.req.json().catch(()=>{throw new DomainError(400,'INVALID_JSON','Malformed JSON request')});const result=book(db,p,c.req.header('Idempotency-Key'));return c.json({data:presentAppointment(db,result.appointment),replay:result.replay},result.replay?200:201);});
+ app.post('/api/v1/appointments',guard,async c=>{const p=await boundedJson(c);const result=book(db,p,c.req.header('Idempotency-Key'));return c.json({data:presentAppointment(db,result.appointment),replay:result.replay},result.replay?200:201);});
  app.post('/api/v1/appointments/:id/cancel',guard,c=>c.json({data:presentAppointment(db,cancel(db,c.req.param('id')))}));
  app.use('/js/*',serveStatic({root:publicDir}));
  app.get('/reviewer-guide',serveStatic({path:publicDir+'reviewer-guide.html'}));

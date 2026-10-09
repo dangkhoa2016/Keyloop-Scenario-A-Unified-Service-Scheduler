@@ -76,3 +76,12 @@ The suite includes earlier 41/41 PASS tests. Follow-up full regression: 45/45 PA
 - **T21 observability/security** remains PARTIAL for richer metrics, request-body caps and exhaustive redaction assertions; previous request-ID/token canary tests remain PASS.
 
 Historical failures remain visible above. No claim of complete T20 accessibility or T21 operational-hardening acceptance.
+
+## T21 request protection and SQLite lock contention — 2026-10-10 ICT
+
+- The POST booking and simulation JSON parsers now enforce **16 KiB** in `src/app.js`, both at declared `Content-Length` preflight and while streaming chunks. Oversized payloads receive HTTP **413** / `PAYLOAD_TOO_LARGE` without a booking. Malformed payloads still return 400. The UI's normal small booking payloads are unaffected.
+- Real SQLite lock contention is exercised on a **temporary on-disk SQLite file**: a second connection holds `BEGIN IMMEDIATE`, the booking API responds HTTP **503** / `DATABASE_BUSY`, and no appointment row is partially saved. It does not imply bounded retry logic or throughput targets have been implemented.
+- `tests/body-limit-and-contention.test.js`: **2/2 PASS**, including chunked-body limit and busy lock.
+- Existing `tests/observability-security.test.js`: correlation between `X-Request-ID` and JSON error request ID, no demo token canary in response/structured log. This is a targeted redaction test, not a comprehensive secret-leak audit.
+- **Full isolated `npm test` regression: 51/51 PASS, 0 failed, 0 skipped**.
+- Operational hardening **PARTIAL**: structured request ID, method/path/status/latency fields exist, but production-grade historical metrics (route p50/p95, aggregate counters), controlled busy retries, comprehensive redaction testing and manual screen reader/Android QA are not finished.
