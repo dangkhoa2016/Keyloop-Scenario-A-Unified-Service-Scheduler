@@ -1,0 +1,128 @@
+# Reviewer Test Guide — Keyloop Scenario A
+
+**Unified Service Scheduler** | Node.js + Hono + SQLite3; Vue 3 + Tailwind CSS CDN, no frontend build tool.
+
+## Access and prerequisites
+
+Open the [Live Scheduling Lab in Colab](../notebooks/Keyloop-Scenario-A-Scheduling-Lab-Live.ipynb) from the repository README and follow its final cell to the temporary public demo URL. The project serves the browser and REST API through the same origin. Use a recent desktop browser; the interface also supports narrow mobile screens. **No account required for read-only exploration.** Use **Booking access & help** to open the modal containing the **Demo write token** field and **Verify token** button: only the author can provide an authorized token if you are expected to perform Create/Cancel. Never copy the token into public reports, screenshots, or GitHub issues.
+
+For local execution on a fresh checkout:
+```bash
+npm ci
+npm run db:migrate
+npm run db:seed:rich
+npm run db:seed:demo
+npm test
+npm start
+```
+Visit `http://127.0.0.1:3000`. These seeds use **INSERT OR IGNORE** and fixed idempotency keys for each date, so reruns do not erase existing data or multiply identical appointments.
+
+## Suggested 7–10 minute guided walkthrough
+
+| Step | Test action | Expected result | Requirement |
+|---|---|---|---|
+| 1 | Open home page, inspect dealership, customer, vehicle, service and appointment list | The page renders; dropdowns have many synthetic records | A-1 |
+| 2 | Choose **North Service Hub** and a future weekday, then **Oil Change** | Times appear only when both a qualified technician and a compatible bay have capacity for the full duration | A-2 |
+| 3 | Change service to **Brake Inspection (90 min)** | Availability recalculates; different eligibility/capacity may apply | A-2 |
+| 4 | Change **Customer** | Only their vehicle(s) appear in the Vehicle dropdown | A-1 |
+| 5 | Observe the **Appointments** section before doing anything | A mix of pre-seeded confirmed and cancelled appointments exists across dealerships | A-3 |
+| 6 | With authorized token, choose a valid slot and press **Confirm appointment** | Confirmation shows appointment ID and allocated technician/bay; row persists after refresh | A-1, A-2, A-3 |
+| 7 | Revisit same start time with the same constrained brake resources | A double booking is prevented; the slot disappears when all qualified resources are occupied | A-2 |
+| 8 | With token, press **Cancel** on your appointment | Status becomes cancelled; capacity can be reused; the audit record remains | A-3 |
+| 9 | Run `npm run test:concurrency` | 10 independent workers start together; exactly **1** confirmed, **9** rejected; DB contains no overlap | A-2 |
+| 10 | Run `npm test` and `npm run evidence` | Automated tests pass; DB integrity and no-overlap checks pass | Verification |
+
+**Demo restrictions:** Test appointments are synthetic, but writes change the running demo SQLite file. Prefer creating one or two bookings and cancelling only records you created. The site does **not** offer a reset button. Avoid editing or deleting existing reviewer evidence.
+
+## Useful ready-made data combinations
+
+- **Central Auto Service** (`dlr_001`): baseline Oil Change (45 min), Brake Inspection (90 min), Diagnostics (60 min); additional Tire Rotation and Battery services.
+- **West Auto Service** (`dlr_002`): Oil Change plus Powertrain and Detailing resources.
+- **North Service Hub** (`dlr_003`) and **East Motor Center** (`dlr_004`): multiple technicians/bays to explore overlapping schedules.
+- **South Auto Care** (`dlr_005`) and **Airport Automotive** (`dlr_006`): additional weekday capacity and populated appointment examples.
+- **Olivia Bennett** and **Ethan Brooks** retain the original baseline customer IDs, along with 18 new synthetic customers and cars.
+
+Use a date **Monday–Saturday, 08:00–18:00**, and note the technician lunch shift break **12:00–13:00**. Service duration must fit fully before closing or break. All displayed dates/times are in `Asia/Ho_Chi_Minh`; the API persists absolute UTC instants. The exact available slots depend on existing confirmed appointments.
+
+## REST API examples
+
+```bash
+BASE=http://127.0.0.1:3000
+curl -s "$BASE/readyz"
+curl -s "$BASE/api/v1/dealerships"
+curl -s "$BASE/api/v1/customers"
+curl -s "$BASE/api/v1/customers/cus_003/vehicles"
+curl -s "$BASE/api/v1/dealerships/dlr_003/service-types"
+curl -s "$BASE/api/v1/appointments"
+# Replace YYYY-MM-DD with a valid upcoming weekday
+curl -s "$BASE/api/v1/availability?dealershipId=dlr_003&serviceTypeId=svc_oil&date=YYYY-MM-DD"
+```
+
+Create requests require `Idempotency-Key`, a JSON payload with `customerId`, `vehicleId`, `dealershipId`, `serviceTypeId`, `startAt`, and — on the protected public demo — the private `X-Demo-Write-Token`. Request time includes an explicit UTC offset or `Z`.
+
+## Expected error cases
+
+- Invalid/missing Idempotency-Key → 400.
+- Customer is not the owner of vehicle → 422.
+- Request outside opening hours / past date → 422.
+- Attempt to reserve when no compatible technician+bay is free → 409.
+- Retry identical payload with identical Idempotency-Key → 200, same appointment ID, no duplicate row.
+- Reuse a key with a changed payload → 409.
+- Missing or wrong write token on public demo → 403.
+- Successful new appointment → 201, persisted to SQLite; GET returns 200.
+
+## Automated evidence and limitations
+
+Review `npm test`, `npm run test:concurrency`, `npm run test:browser`, `npm run test:browser:e2e` and the runtime files under `evidence/`. Concurrency test uses isolated temporary SQLite data and will **not** change demo bookings. Browser E2E and HTTP smoke tests **do** create/cancel synthetic bookings in the configured environment. The public demo is accessible only while the temporary tunnel and Kaggle runtime stay online.
+
+Manual screen-reader and physical-phone checks must be recorded as separate human verification, not inferred from Playwright results.
+
+## If booking says a demo token is required
+
+This is **not** a scheduling failure: the temporary public demo protects writes to its shared SQLite database. You can continue exploring dealerships, availability and existing bookings without any credential. To test booking or cancellation, contact the project owner through your existing review channel for a private demo write token, enter it on the home page and click **Verify token**. If verification rejects the token, check for accidental whitespace or ask for a new token. Never post tokens to public comments or issue trackers. Until a token has been verified successfully, Confirm and Cancel controls are disabled so users do not unexpectedly encounter a 403.
+
+## Interactive conflict/concurrency proof (no write token needed)
+
+On the main page, scroll to **Why does the scheduler accept or reject bookings?**
+
+1. Click **Test Booking Conflict (2 requests)**: two requests ask for identical 90-minute Brake Inspection at Central Auto Service. The first must be CONFIRMED (201), the second REJECTED (409) because the only qualified technician and compatible bay are reserved.
+2. Wait about 20 seconds for cooldown. Click **Simulate 10 Concurrent Requests**: ten **independent Node.js processes** are released after all report ready. Expect exactly **1 CONFIRMED**, **9 REJECTED**, and **1 confirmed SQLite row**. Which request wins is not deterministic.
+3. Observe the decision table, allocated resource, per-request reason and SQLite integrity. Refresh the page: the actual appointment list is **unchanged** because both experiments use disposable SQLite databases.
+
+The simulation intentionally uses the baseline restricted resource pair; the larger rich dataset is not used to change its capacity.
+
+
+## Friendly appointment list and booking confirmation (current reviewer UI)
+
+After booking, the confirmation panel shows customer, vehicle, service and duration, dealership-local start/end time, assigned technician and service bay, plus a readable explanation of why capacity was accepted. Technical IDs remain behind an expandable reviewer-only section.
+
+The **Service appointments** section displays appointment detail cards rather than bare IDs. Filter by status (**All / Confirmed / Cancelled**), dealership, or search customer, vehicle, service and assigned resources. Filters affect display only and never change SQLite records. Expand **Why this appointment was accepted · technical evidence** to inspect the underlying IDs and scheduling constraints. The latest 100 records appear newest-created first. Cancellation remains protected by the demo write token, and reviewers should only cancel their own new test bookings.
+
+The public interactive simulators use isolated SQLite databases. The displayed confirmed/rejected decisions can be cross-checked against the **SQLite integrity** and **confirmed rows in isolated SQLite** fields. The two-request conflict is sequential; the ten-request race uses ten independent Node.js child processes after a barrier. Do not describe the sequential conflict as concurrent.
+
+Suggested verification without writing to live SQLite:
+
+```bash
+npm test
+npm run evidence
+```
+
+The appointment reviewer browser test reads the current local list and verifies visible cards, cancelled status filtering, empty search results and browser errors; it does not create or cancel live records. The confirmation test uses an isolated SQLite database. Neither automated test substitutes for physical Android Chrome, Windows Narrator, keyboard focus or contrast checks; record manual QA results separately.
+
+## Sandbox vs live appointment counters (reviewer clarification)
+
+The **Interactive engineering demo** uses disposable SQLite databases. Results in its table are sandbox-only, not records in the shared live booking database. The UI explicitly says **Simulation only — no appointments added to the live database.** A conflict run has two requests (one confirmed, one rejected); the concurrent run has ten independent worker requests (one confirmed, nine rejected). The result counts, sandbox integrity, and sandbox persisted-row count are evidence for the isolated simulation only.
+
+The **Service appointments** heading instead reports true live totals via `GET /api/v1/appointments/stats`. This endpoint aggregates all persisted appointments in live SQLite and reports `total`, `confirmed`, and `cancelled`, independently of the newest 100 displayed records and any client-side filters. For example, a live count of 42 appointments may remain at 42 after running either simulation; this is intentional, not a missing booking. Actual authorized booking/cancellation changes live statistics after refresh.
+
+Run `PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scripts/simulation-live-isolation-browser-test.js` to verify the interactive ten-request demonstration while checking live appointment counters before and after the run. This test writes **only to isolated sandbox SQLite**, does not require the demo write token, and should leave live counts unchanged. The simulator has a cooldown, so rerun later if another simulation was just performed.
+
+## Stale availability and accessibility checks
+
+For a stale-slot scenario, open two tabs on the same dealership, service, future date and start time. With a private demo write token, book the final available resource pair in the first tab; the second tab should receive an unavailable-slot response rather than another confirmed booking. If multiple technician/bay pairs are eligible, two bookings can both be valid. Use a disposable environment for destructive tests.
+
+The repository includes `scripts/stale-slot-browser-test.js`, `scripts/ui08-browser-acceptance.mjs`, `scripts/ui09-browser-acceptance.mjs`, `scripts/ui10-keyboard-acceptance.mjs`, `scripts/ui11-responsive-touch.mjs`, and `scripts/ui12-axe-audit.mjs` for additional browser-focused evidence. These tests may require a local server, Playwright browser installation and specific setup; consult the scripts before executing. Automated browser and accessibility checks do not establish physical-device or full screen-reader conformance.
+
+## Reproducible notebook demo
+
+Use [Keyloop Scenario A Scheduling Lab Live](../notebooks/Keyloop-Scenario-A-Scheduling-Lab-Live.ipynb) for the notebook-based workflow. It runs a separate SQLite sandbox and finishes with an interactive Cloudflare Quick Tunnel session. The session is ephemeral; stop its final cell to clean up. The notebook checks the source revision and verifies the dedicated reviewer frontend and tunnel helper against their checksums. Never share demo tokens in notebooks, logs or screenshots.

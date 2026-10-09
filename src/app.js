@@ -21,6 +21,7 @@ export function createApp(db){
  app.post('/api/v1/appointments',guard,async c=>{const p=await c.req.json().catch(()=>{throw new DomainError(400,'INVALID_JSON','Malformed JSON request')});const result=book(db,p,c.req.header('Idempotency-Key'));return c.json({data:result.appointment,replay:result.replay},result.replay?200:201);});
  app.post('/api/v1/appointments/:id/cancel',guard,c=>c.json({data:cancel(db,c.req.param('id'))}));
  app.use('/js/*',serveStatic({root:publicDir}));
+ app.get('/reviewer-guide',serveStatic({path:publicDir+'reviewer-guide.html'}));
  app.get('/',serveStatic({path:publicDir+'index.html'}));
  return app;
 }
