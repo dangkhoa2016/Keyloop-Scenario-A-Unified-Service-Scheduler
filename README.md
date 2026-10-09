@@ -124,3 +124,11 @@ Open the built-in **/reviewer-guide** page linked from the homepage, or read the
 ## Friendly demo access handling
 
 On public tunnels, browsing is open but Create/Cancel require the private demo write token. The page exposes a read-only explanation, token verification action, disabled write buttons when no token is supplied, and contextual resolution messages for invalid/missing tokens. The read-only API endpoint is `GET /api/v1/demo-access`; `POST /api/v1/demo-access/verify` checks a token without changing bookings.
+
+## Interactive simulation: booking conflict and 10 concurrent requests
+
+The homepage now provides **Test Booking Conflict (2 requests)** and **Simulate 10 Concurrent Requests**. Each invokes 'POST /api/v1/demo/simulate' with a fixed 'mode' of 'conflict' or 'concurrent' (no user-controlled SQL or subprocess count). The demo constructs a **new temporary SQLite database** with the same migrations and baseline seed, then has the existing scheduler reserve one qualified technician and one compatible service bay for a 90-minute Brake Inspection.
+
+The conflict scenario submits two competing requests sequentially. The concurrent scenario releases ten separate Node.js workers together after a ready barrier. Exactly one request must confirm; all others must reject with 'SLOT_UNAVAILABLE'. The response includes actual HTTP-style decision statuses, explanations, resource identifiers, integrity and confirmed-row counts.
+
+**Important:** These are sandboxed demonstrations, not writes to production demo appointments. No demo write token is required. Requests are rate-limited (one running simulation, 20-second cooldown per caller). Automated evidence: 'tests/simulation.test.js', 'scripts/simulation-browser-test.js'.

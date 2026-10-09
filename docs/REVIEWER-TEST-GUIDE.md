@@ -80,3 +80,13 @@ Manual screen-reader and physical-phone checks must be recorded as separate huma
 ## If booking says a demo token is required
 
 This is **not** a scheduling failure: the temporary public demo protects writes to its shared SQLite database. You can continue exploring dealerships, availability and existing bookings without any credential. To test booking or cancellation, contact the project owner through your existing review channel for a private demo write token, enter it on the home page and click **Verify token**. If verification rejects the token, check for accidental whitespace or ask for a new token. Never post tokens to public comments or issue trackers. When no token has been entered, Confirm and Cancel controls are disabled so users do not unexpectedly encounter a 403.
+
+## Interactive conflict/concurrency proof (no write token needed)
+
+On the main page, scroll to **Why does the scheduler accept or reject bookings?**
+
+1. Click **Test Booking Conflict (2 requests)**: two requests ask for identical 90-minute Brake Inspection at Central Auto Service. The first must be CONFIRMED (201), the second REJECTED (409) because the only qualified technician and compatible bay are reserved.
+2. Wait about 20 seconds for cooldown. Click **Simulate 10 Concurrent Requests**: ten **independent Node.js processes** are released after all report ready. Expect exactly **1 CONFIRMED**, **9 REJECTED**, and **1 confirmed SQLite row**. Which request wins is not deterministic.
+3. Observe the decision table, allocated resource, per-request reason and SQLite integrity. Refresh the page: the actual appointment list is **unchanged** because both experiments use disposable SQLite databases.
+
+The simulation intentionally uses the baseline restricted resource pair; the larger rich dataset is not used to change its capacity.
