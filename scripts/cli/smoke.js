@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {DateTime} from 'luxon';
+import {randomUUID} from 'node:crypto';
+import {mkdirSync,writeFileSync} from 'node:fs';
+const base=process.env.SMOKE_URL||'http://127.0.0.1:3000';
+const headers={'Content-Type':'application/json',...(process.env.DEMO_WRITE_TOKEN?{'X-Demo-Write-Token':process.env.DEMO_WRITE_TOKEN}:{})};
+async function api(path,options={}){const res=await fetch(base+path,options);const body=await res.json();return {status:res.status,body};}
+const ready=await api('/readyz');assert.equal(ready.status,200);
+const now=DateTime.now().setZone('Asia/Ho_Chi_Minh');
+const date=now.plus({days:((8-now.weekday)%7)||7}).toISODate();
+const query=new URLSearchParams({dealershipId:'dlr_001',serviceTypeId:'svc_brake',date});
+const list=await api('/api/v1/availability?'+query);
+assert.equal(list.status,200);assert.ok(list.body.data.slots.length>0);
+const startAt=list.body.data.slots[0].startAt;
+const payload={customerId:'cus_001',vehicleId:'veh_001',dealershipId:'dlr_001',serviceTypeId:'svc_brake',startAt};
+const key='http-smoke-'+randomUUID();
+const options=(k)=>({method:'POST',headers:{...headers,'Idempotency-Key':k},body:JSON.stringify(payload)});
+const first=await api('/api/v1/appointments',options(key));assert.equal(first.status,201,JSON.stringify(first));
+const replay=await api('/api/v1/appointments',options(key));assert.equal(replay.status,200);
+assert.equal(first.body.data.id,replay.body.data.id);
+const conflict=await api('/api/v1/appointments',options('http-smoke-'+randomUUID()));assert.equal(conflict.status,409);
+const persisted=await api('/api/v1/appointments/'+first.body.data.id);assert.equal(persisted.status,200);
+const report={timestamp:new Date().toISOString(),readiness:ready.status,availability:list.body.data.slots.length,create:first.status,replay:replay.status,conflict:conflict.status,persisted:persisted.status,appointmentId:first.body.data.id};
+mkdirSync('evidence',{recursive:true});writeFileSync('evidence/http-smoke.json',JSON.stringify(report,null,2)+'\n');
+console.log('HTTP_SMOKE=PASS');console.log(JSON.stringify(report,null,2));

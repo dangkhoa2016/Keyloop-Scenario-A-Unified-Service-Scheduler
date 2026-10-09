@@ -1,0 +1,49 @@
+{
+  "name": "keyloop-scenario-a-unified-service-scheduler",
+  "version": "1.0.0",
+  "description": "Transactional, resource-aware automotive service scheduling with concurrency-safe booking, SQLite and a reproducible Kaggle lab.",
+  "main": "src/server.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "db:migrate": "node src/db/migrate.js",
+    "db:seed": "node src/db/seed.js",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test:concurrency": "node --test tests/concurrency.test.js",
+    "backup": "node scripts/cli/backup.js",
+    "evidence": "node scripts/cli/evidence.js",
+    "smoke": "node scripts/cli/smoke.js",
+    "test:browser": "node scripts/browser/browser-smoke.js",
+    "test:browser:e2e": "node scripts/browser/browser-e2e.js",
+    "db:seed:rich": "node src/db/seed-rich.js",
+    "db:seed:demo": "node scripts/seed-demo-appointments.js"
+  },
+  "keywords": [
+    "service-scheduling",
+    "appointment-booking",
+    "resource-allocation",
+    "sqlite",
+    "hono",
+    "concurrency",
+    "idempotency",
+    "automotive"
+  ],
+  "author": "Đăng Khoa <i.am@dangkhoa.dev>",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@hono/node-server": "^2.1.4",
+    "better-sqlite3": "^13.0.3",
+    "hono": "^4.13.13",
+    "luxon": "^3.7.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.0"
+  }
+}

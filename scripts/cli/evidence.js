@@ -1,0 +1,6 @@
+import {openDb} from '../../src/db/connection.js';import {migrate} from '../../src/db/migrate.js';import {mkdirSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';
+const db=openDb();migrate(db);
+const checkedAt=new Date().toISOString();const check=db.pragma('integrity_check',{simple:true});
+const count=t=>db.prepare('SELECT count(*) n FROM '+t).get().n;
+const data={checkedAt,sqliteVersion:db.prepare('SELECT sqlite_version() version').get().version,integrity:check,counts:{dealerships:count('dealerships'),customers:count('customers'),vehicles:count('vehicles'),technicians:count('technicians'),serviceBays:count('service_bays'),appointments:count('appointments')},noOverlappingConfirmedResource:!db.prepare(`SELECT 1 FROM appointments a JOIN appointments b ON a.id<b.id AND a.status='confirmed' AND b.status='confirmed' AND a.start_at_ms<b.end_at_ms AND b.start_at_ms<a.end_at_ms AND (a.technician_id=b.technician_id OR a.service_bay_id=b.service_bay_id) LIMIT 1`).get()};
+mkdirSync('evidence',{recursive:true});writeFileSync(resolve('evidence','runtime-evidence.json'),JSON.stringify(data,null,2)+'\n');console.log(JSON.stringify(data,null,2));db.close();if(check!=='ok'||!data.noOverlappingConfirmedResource)process.exitCode=1;
