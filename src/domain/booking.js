@@ -8,7 +8,7 @@ export function context(db,dealerId,serviceId,startAt){
  const service=db.prepare('SELECT * FROM service_types WHERE id=? AND active=1').get(serviceId);
  if(!dealer||!service)fail(404,'NOT_FOUND','Dealer/service missing');
  const p=DateTime.fromISO(startAt,{setZone:true});
- if(!p.isValid||!/(Z|[+-]\d{2}:\d{2})$/.test(startAt))fail(400,'INVALID_TIME','Explicit offset required');
+ if(!p.isValid||!/(?:Z|[+-](?:0\d|1[0-3]):[0-5]\d|[+-]14:00)$/.test(startAt))fail(400,'INVALID_TIME','Explicit offset required');
  const local=p.setZone(dealer.time_zone);
  if(local.toMillis()<=Date.now())fail(422,'PAST_TIME','Future date required');
  if(local.minute%30||local.second||local.millisecond)fail(400,'INVALID_SLOT','Slot step is 30 minutes');
