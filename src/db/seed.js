@@ -1,10 +1,11 @@
+import {demoCustomers} from './demo-customers.js';
 import {openDb} from './connection.js';import {migrate} from './migrate.js';import {fileURLToPath} from 'node:url';
 export function seed(db){
  const exec=db.transaction(()=>{
  const insert=(t,cols,rows)=>{const sql='INSERT OR IGNORE INTO '+t+'('+cols.join(',')+') VALUES('+cols.map(()=>'?').join(',')+')';const stmt=db.prepare(sql);rows.forEach(r=>stmt.run(...r));};
  insert('dealerships',['id','name','time_zone'],[['dlr_001','Central Auto Service','Asia/Ho_Chi_Minh'],['dlr_002','West Auto Service','Asia/Ho_Chi_Minh']]);
  insert('dealership_hours',['dealership_id','weekday','open_minute','close_minute'],['dlr_001','dlr_002'].flatMap(d=>[1,2,3,4,5,6].map(w=>[d,w,480,1080])));
- insert('customers',['id','display_name'],[['cus_001','Demo Customer A'],['cus_002','Demo Customer B']]);
+ insert('customers',['id','display_name'],demoCustomers.slice(0,2).map(([id,old,name])=>[id,name]));
  insert('vehicles',['id','customer_id','vin','make','model'],[['veh_001','cus_001','1HGCM82633A004352','Honda','Accord'],['veh_002','cus_002','1FAFP404X1F192345','Ford','Mustang']]);
  insert('service_types',['id','name','duration_minutes'],[['svc_oil','Oil Change',45],['svc_brake','Brake Inspection',90],['svc_diag','Diagnostics',60]]);
  insert('skills',['id','code'],[['skill_general','general'],['skill_brake','brake'],['skill_diag','diagnostics']]);

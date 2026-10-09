@@ -40,7 +40,7 @@ Visit `http://127.0.0.1:3000`. These seeds use **INSERT OR IGNORE** and fixed id
 - **West Auto Service** (`dlr_002`): Oil Change plus Powertrain and Detailing resources.
 - **North Service Hub** (`dlr_003`) and **East Motor Center** (`dlr_004`): multiple technicians/bays to explore overlapping schedules.
 - **South Auto Care** (`dlr_005`) and **Airport Automotive** (`dlr_006`): additional weekday capacity and populated appointment examples.
-- **Demo Customer A** and **Demo Customer B** are preserved for backwards compatibility, along with 18 new synthetic customers and cars.
+- **Olivia Bennett** and **Ethan Brooks** retain the original baseline customer IDs, along with 18 new synthetic customers and cars.
 
 Use a date **Monday–Saturday, 08:00–18:00**, and note the technician lunch shift break **12:00–13:00**. Service duration must fit fully before closing or break. All displayed dates/times are in `Asia/Ho_Chi_Minh`; the API persists absolute UTC instants. The exact available slots depend on existing confirmed appointments.
 
