@@ -5,6 +5,10 @@ import {serveStatic} from '@hono/node-server/serve-static';
 import {DomainError,available,book,getAppointment,cancel} from './domain/booking.js';
 import {fileURLToPath} from 'node:url';
 const publicDir=fileURLToPath(new URL('../public/',import.meta.url));
+function presentAppointment(db,a){
+ const extra=db.prepare(`SELECT c.display_name AS customerName,v.make||' '||v.model AS vehicleName,d.name AS dealershipName,d.time_zone AS timeZone,s.name AS serviceName,s.duration_minutes AS durationMinutes,t.name AS technicianName,b.name AS bayName FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN vehicles v ON v.id=a.vehicle_id JOIN dealerships d ON d.id=a.dealership_id JOIN service_types s ON s.id=a.service_type_id JOIN technicians t ON t.id=a.technician_id JOIN service_bays b ON b.id=a.service_bay_id WHERE a.id=?`).get(a.id);
+ return {...a,details:extra,explanation:'A qualified technician and a compatible service bay were available for the full service duration when the booking was committed.'};
+}
 export function createApp(db){
  const app=new Hono();
  let simulationBusy=false;const simulationCalls=new Map();
@@ -19,12 +23,12 @@ export function createApp(db){
  app.get('/api/v1/customers/:id/vehicles',c=>c.json({data:db.prepare('SELECT * FROM vehicles WHERE customer_id=?').all(c.req.param('id'))}));
  app.get('/api/v1/dealerships/:id/service-types',c=>c.json({data:db.prepare('SELECT * FROM service_types WHERE active=1 ORDER BY id').all()}));
  app.get('/api/v1/availability',c=>c.json({data:available(db,c.req.query())}));
- app.get('/api/v1/appointments',c=>c.json({data:db.prepare('SELECT id FROM appointments ORDER BY created_at_ms DESC LIMIT 100').all().map(x=>getAppointment(db,x.id))}));
- app.get('/api/v1/appointments/:id',c=>c.json({data:getAppointment(db,c.req.param('id'))}));
+ app.get('/api/v1/appointments',c=>c.json({data:db.prepare('SELECT id FROM appointments ORDER BY created_at_ms DESC LIMIT 100').all().map(x=>presentAppointment(db,getAppointment(db,x.id)))}));
+ app.get('/api/v1/appointments/:id',c=>c.json({data:presentAppointment(db,getAppointment(db,c.req.param('id')))}));
  const guard=async(c,next)=>{if((process.env.PUBLIC_DEMO==='1'||process.env.HOST==='0.0.0.0')&&!process.env.DEMO_WRITE_TOKEN)throw new DomainError(403,'PUBLIC_WRITE_DISABLED','Demo booking is temporarily disabled. Please contact the demo owner.');if(process.env.DEMO_WRITE_TOKEN){const supplied=c.req.header('X-Demo-Write-Token');if(!supplied)throw new DomainError(403,'DEMO_TOKEN_REQUIRED','Booking is protected. Enter the demo write token provided by the owner.');if(supplied!==process.env.DEMO_WRITE_TOKEN)throw new DomainError(403,'DEMO_TOKEN_INVALID','That token is not valid. Check the token or request a new one from the demo owner.');}await next();};
  app.post('/api/v1/demo-access/verify',guard,c=>c.json({data:{authorized:true}}));
- app.post('/api/v1/appointments',guard,async c=>{const p=await c.req.json().catch(()=>{throw new DomainError(400,'INVALID_JSON','Malformed JSON request')});const result=book(db,p,c.req.header('Idempotency-Key'));return c.json({data:result.appointment,replay:result.replay},result.replay?200:201);});
- app.post('/api/v1/appointments/:id/cancel',guard,c=>c.json({data:cancel(db,c.req.param('id'))}));
+ app.post('/api/v1/appointments',guard,async c=>{const p=await c.req.json().catch(()=>{throw new DomainError(400,'INVALID_JSON','Malformed JSON request')});const result=book(db,p,c.req.header('Idempotency-Key'));return c.json({data:presentAppointment(db,result.appointment),replay:result.replay},result.replay?200:201);});
+ app.post('/api/v1/appointments/:id/cancel',guard,c=>c.json({data:presentAppointment(db,cancel(db,c.req.param('id')))}));
  app.use('/js/*',serveStatic({root:publicDir}));
  app.get('/reviewer-guide',serveStatic({path:publicDir+'reviewer-guide.html'}));
  app.get('/',serveStatic({path:publicDir+'index.html'}));

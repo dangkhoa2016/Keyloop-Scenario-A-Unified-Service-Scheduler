@@ -132,3 +132,7 @@ The homepage now provides **Test Booking Conflict (2 requests)** and **Simulate 
 The conflict scenario submits two competing requests sequentially. The concurrent scenario releases ten separate Node.js workers together after a ready barrier. Exactly one request must confirm; all others must reject with 'SLOT_UNAVAILABLE'. The response includes actual HTTP-style decision statuses, explanations, resource identifiers, integrity and confirmed-row counts.
 
 **Important:** These are sandboxed demonstrations, not writes to production demo appointments. No demo write token is required. Requests are rate-limited (one running simulation, 20-second cooldown per caller). Automated evidence: 'tests/simulation.test.js', 'scripts/simulation-browser-test.js'.
+
+## Human-readable booking confirmation
+
+After a successful booking the frontend displays a structured appointment confirmation with customer, vehicle, service and duration, dealership, local start/end times, assigned technician and service bay, and a summary of the resource checks. Technical IDs appear in an expandable reviewer-only details area rather than in the main success text. The API provides an additional `details` object on appointment responses; existing technical IDs and status fields remain unchanged for compatibility. Browser proof: `scripts/confirmation-browser-test.js`, which books into an isolated temporary SQLite database.
