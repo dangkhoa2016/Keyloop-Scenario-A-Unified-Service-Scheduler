@@ -18,7 +18,9 @@
     "evidence": "node scripts/evidence.js",
     "smoke": "node scripts/smoke.js",
     "test:browser": "node scripts/browser-smoke.js",
-    "test:browser:e2e": "node scripts/browser-e2e.js"
+    "test:browser:e2e": "node scripts/browser-e2e.js",
+    "db:seed:rich": "node src/db/seed-rich.js",
+    "db:seed:demo": "node scripts/seed-demo-appointments.js"
   },
   "keywords": [],
   "author": "",

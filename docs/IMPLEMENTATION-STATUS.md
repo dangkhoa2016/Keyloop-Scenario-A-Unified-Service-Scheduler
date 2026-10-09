@@ -28,3 +28,11 @@ The backend was selected as the fully implemented service layer; frontend is a w
 
 ## Restore and verify
 Run `bash scripts/bootstrap-kaggle.sh` from the portable extracted source on a new Kaggle environment. Never overwrite an existing database. Copying a live WAL database file directly is unsafe; use `npm run backup` for online snapshots.
+
+## Demo data / reviewer guide enhancement (2026-10-09)
+- Expanded persistent synthetic dataset to 6 dealerships, 20 customers, 20 vehicles, 32 technicians, 32 service bays, 10 service types and 10 skills.
+- Appointments: 15 total (12 confirmed, 3 cancelled) after idempotent demo fixture run; existing 3 preserved.
+- `npm run db:seed:rich` and `npm run db:seed:demo` are repeatable and preserve existing appointments.
+- Reviewer manual: `docs/REVIEWER-TEST-GUIDE.md`; browser page `/reviewer-guide`, linked from the homepage.
+- Tests increased to 26/26 PASS. Public browser smoke and desktop/mobile viewport checks passed.
+- Cloudflare Quick Tunnel URL is temporary; do not claim stable public hosting or completed manual accessibility QA.

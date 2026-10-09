@@ -12,7 +12,8 @@ if ! test -e data/scheduler.sqlite && test -f backups/scheduler-safe-backup.sqli
   bash scripts/restore.sh
 fi
 npm run db:migrate
-npm run db:seed
+npm run db:seed:rich
+npm run db:seed:demo
 npm test
 npm run evidence
 echo "BOOTSTRAP=PASS"

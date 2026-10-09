@@ -92,6 +92,10 @@ If browsers were installed into a custom cache, set `PLAYWRIGHT_BROWSERS_PATH` t
 
 Use `bash scripts/bootstrap-kaggle.sh` after extracting the portable source archive. It installs dependencies, restores the transactional SQLite backup only if no database exists, runs migration/seed and tests. This script never overwrites an existing database.
 
+## Reviewer test guide
+
+Open the built-in **/reviewer-guide** page linked from the homepage, or read the full test manual at `docs/REVIEWER-TEST-GUIDE.md`. Expand and idempotently repopulate the demo using `npm run db:seed:rich` and `npm run db:seed:demo`. They preserve existing appointment rows.
+
 ## Reviewer flow
 
 1. Start service and inspect `/readyz`.
