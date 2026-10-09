@@ -1,0 +1,15 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
+import {DateTime} from 'luxon';import {openDb} from '../src/db/connection.js';import {migrate} from '../src/db/migrate.js';import {seed} from '../src/db/seed.js';import {available,book,cancel,getAppointment} from '../src/domain/booking.js';
+const directory=mkdtempSync(join(tmpdir(),'keyloop-a-')),db=openDb(join(directory,'test.sqlite'));migrate(db);seed(db);
+test.after(()=>{db.close();rmSync(directory,{recursive:true,force:true});});
+const day=DateTime.now().setZone('Asia/Ho_Chi_Minh').plus({days:((8-DateTime.now().setZone('Asia/Ho_Chi_Minh').weekday)%7)||7});
+function when(hour,minute=0){return day.set({hour,minute,second:0,millisecond:0}).toISO();}
+function req(startAt=when(9),serviceTypeId='svc_brake'){return {customerId:'cus_001',vehicleId:'veh_001',dealershipId:'dlr_001',serviceTypeId,startAt};}
+test('seed contains expected synthetic entities',()=>assert.equal(db.prepare('SELECT COUNT(*) n FROM dealerships').get().n,2));
+test('availability returns slots for qualified brake resource pair',()=>{const a=available(db,{dealershipId:'dlr_001',serviceTypeId:'svc_brake',date:day.toISODate()});assert.ok(a.slots.some(s=>s.localLabel==='09:00'));});
+test('booking creates persistent linked appointment',()=>{const result=book(db,req(),'booking-main-00001');assert.equal(result.replay,false);assert.equal(result.appointment.technicianId,'tech_001');assert.equal(result.appointment.serviceBayId,'bay_001');assert.equal(getAppointment(db,result.appointment.id).status,'confirmed');});
+test('retry same idempotency key yields same row',()=>{const r=book(db,req(),'booking-main-00001');assert.equal(r.replay,true);assert.equal(db.prepare('SELECT COUNT(*) n FROM appointments').get().n,1);});
+test('same key with changed payload rejects',()=>assert.throws(()=>book(db,req(when(10)),'booking-main-00001'),{code:'IDEMPOTENCY_CONFLICT'}));
+test('overlapping same sole qualified resources rejects',()=>assert.throws(()=>book(db,req(when(9,30)),'booking-other-0001'),{code:'SLOT_UNAVAILABLE'}));
+test('cancellation preserves row and releases slot',()=>{const id=db.prepare('SELECT id FROM appointments LIMIT 1').get().id;assert.equal(cancel(db,id).status,'cancelled');assert.equal(book(db,req(),'booking-rebook-001').appointment.status,'confirmed');});
+test('DB overlap guard prevents raw conflicting insert',()=>{const a=db.prepare("SELECT * FROM appointments WHERE status='confirmed' LIMIT 1").get();const insert=db.prepare("INSERT INTO appointments(id,customer_id,vehicle_id,dealership_id,service_type_id,technician_id,service_bay_id,start_at_ms,end_at_ms,status,idempotency_key,request_fingerprint,created_at_ms) VALUES(?,?,?,?,?,?,?,?,?,'confirmed',?,?,?)");assert.throws(()=>insert.run('apt_raw','cus_001','veh_001',a.dealership_id,a.service_type_id,a.technician_id,a.service_bay_id,a.start_at_ms,a.end_at_ms,'raw-sql-conflict','raw',Date.now()),/OVERLAP/);});

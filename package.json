@@ -1,0 +1,38 @@
+{
+  "name": "keyloop-scenario-a-unified-service-scheduler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "db:migrate": "node src/db/migrate.js",
+    "db:seed": "node src/db/seed.js",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test:concurrency": "node --test tests/concurrency.test.js",
+    "backup": "node scripts/backup.js",
+    "evidence": "node scripts/evidence.js",
+    "smoke": "node scripts/smoke.js",
+    "test:browser": "node scripts/browser-smoke.js",
+    "test:browser:e2e": "node scripts/browser-e2e.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": "true",
+  "dependencies": {
+    "@hono/node-server": "^2.1.4",
+    "better-sqlite3": "^13.0.3",
+    "hono": "^4.13.13",
+    "luxon": "^3.7.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.0"
+  }
+}
