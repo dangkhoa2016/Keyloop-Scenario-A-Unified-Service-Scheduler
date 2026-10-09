@@ -1,0 +1,32 @@
+import {chromium} from 'playwright';
+import {openDb} from '../../src/db/connection.js';
+import {migrate} from '../../src/db/migrate.js';
+import {seed} from '../../src/db/seed.js';
+import {createApp} from '../../src/app.js';
+import {serve} from '@hono/node-server';
+import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';import {tmpdir} from 'node:os';
+const directory=mkdtempSync(join(tmpdir(),'keyloop-confirmation-'));
+const db=openDb(join(directory,'isolated.sqlite'));migrate(db);seed(db);
+const server=serve({fetch:createApp(db).fetch,port:31318,hostname:'127.0.0.1'});
+const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:1280,height:900}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.goto('http://127.0.0.1:31318/',{waitUntil:'networkidle'});
+ await page.getByRole('button',{name:'Confirm appointment'}).waitFor();
+ await page.locator('select').nth(3).selectOption('svc_oil');
+ const slots=page.locator('button').filter({hasText:/^\d\d:\d\d$/});
+ await slots.first().click();await page.getByRole('button',{name:'Confirm appointment'}).click();
+ const card=page.locator('[aria-label="Booking confirmation"]');
+ await card.getByRole('heading',{name:'Your service appointment is confirmed!'}).waitFor();
+ const txt=await card.innerText();
+ for(const expected of ['Demo Customer A','Honda Accord','Oil Change','Central Auto Service','Morgan','Bay A','Why was this booking accepted?'])if(!txt.includes(expected))throw Error('Missing '+expected);
+ if(txt.includes('Booking confirmed: apt_'))throw Error('Unfriendly technical message still visible');
+ mkdirSync('evidence',{recursive:true});
+ await page.screenshot({path:'evidence/booking-friendly-confirmation.png',fullPage:true});
+ const result={pass:true,appointmentRows:db.prepare('select count(*) n from appointments').get().n,fieldsPresent:true,pageErrors:errors};
+ writeFileSync('evidence/booking-confirmation-test.json',JSON.stringify(result,null,2)+'\n');
+ if(errors.length)throw Error(errors.join(';'));
+ console.log('FRIENDLY_CONFIRMATION_BROWSER=PASS',JSON.stringify(result));
+}catch(e){console.error('FRIENDLY_CONFIRMATION_BROWSER=FAIL',e.message);process.exitCode=1;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));db.close();rmSync(directory,{recursive:true,force:true});}
