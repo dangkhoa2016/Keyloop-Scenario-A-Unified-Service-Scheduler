@@ -1,0 +1,41 @@
+import {chromium} from 'playwright';
+import {readFileSync} from 'node:fs';
+const token=readFileSync('.runtime/demo-write-token','utf8').trim();
+const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:1280,height:800}});
+const issues=[];page.on('pageerror',e=>issues.push(e.message));
+const check=(x,msg)=>{if(!x)throw Error(msg);};
+try{
+ await page.goto('http://127.0.0.1:3000/',{waitUntil:'networkidle'});
+ const before=await (await page.request.get('http://127.0.0.1:3000/api/v1/appointments/stats')).json();
+ check(before.data.total===50,'unexpected baseline');
+ const c=page.getByRole('button',{name:'Cancel appointment'}).first();
+ check(await c.isDisabled(),'missing token cancel not disabled');
+ await page.getByRole('button',{name:'Booking access & help'}).click();
+ const dialog=page.getByRole('dialog',{name:'Booking access'});
+ const input=dialog.locator('input[type=password]');
+ await input.fill('invalid-token-test-123');
+ await dialog.getByRole('button',{name:'Verify token'}).click();
+ await dialog.getByText('That demo token is incorrect',{exact:false}).waitFor();
+ check(await c.isDisabled(),'invalid token enabled cancellation');
+ await input.fill(token);
+ check(await c.isDisabled(),'unverified token enabled cancellation');
+ await dialog.getByRole('button',{name:'Verify token'}).click();
+ await dialog.getByText('Access verified.',{exact:false}).waitFor();
+ check(await c.isEnabled(),'verified token cancellation remains disabled');
+ check(!await page.getByRole('main').getByText('That demo token is incorrect',{exact:false}).count(),'stale error visible after verify');
+ await input.fill('token-changed-after-verify');
+ check(await c.isDisabled(),'editing token did not revoke write capability');
+ check(await dialog.getByText('Access verified.',{exact:false}).count()===0,'stale verify message');
+ await dialog.getByRole('button',{name:'Close booking access'}).click();
+ const end=await (await page.request.get('http://127.0.0.1:3000/api/v1/appointments/stats')).json();
+ check(JSON.stringify(before.data)===JSON.stringify(end.data),'booking data changed');
+ check(issues.length===0,'browser errors: '+issues.join(';'));
+ console.log('UI08_BROWSER=PASS');
+ console.log('INVALID_TOKEN_LOCK=PASS');
+ console.log('VALID_TOKEN_UNLOCK=PASS');
+ console.log('STALE_ERROR_CLEAR=PASS');
+ console.log('TOKEN_EDIT_REVOKE=PASS');
+ console.log('APPOINTMENTS_UNCHANGED='+JSON.stringify(end.data));
+}catch(e){console.error('UI08_BROWSER=FAIL',e.message);process.exitCode=1}
+finally{await browser.close();}

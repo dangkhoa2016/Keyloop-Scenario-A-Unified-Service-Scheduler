@@ -4,7 +4,7 @@
 
 ## Access and prerequisites
 
-Open the **public demo link** supplied by the project author (a Cloudflare Quick Tunnel URL can change after restart). The project serves the browser and REST API through the same origin. Use a recent desktop browser; the interface also supports narrow mobile screens. **No account required for read-only exploration.** The page first displays a **Read-only preview — Booking access required** explanation, followed by a **Demo write token** field and **Verify token** button: only the author can provide an authorized token if you are expected to perform Create/Cancel. Never copy the token into public reports, screenshots, or GitHub issues.
+Open the **public demo link** supplied by the project author (a Cloudflare Quick Tunnel URL can change after restart). The project serves the browser and REST API through the same origin. Use a recent desktop browser; the interface also supports narrow mobile screens. **No account required for read-only exploration.** Use **Booking access & help** to open the modal containing the **Demo write token** field and **Verify token** button: only the author can provide an authorized token if you are expected to perform Create/Cancel. Never copy the token into public reports, screenshots, or GitHub issues.
 
 For local execution on an authorized checkout:
 ```bash
@@ -79,7 +79,7 @@ Manual screen-reader and physical-phone checks must be recorded as separate huma
 
 ## If booking says a demo token is required
 
-This is **not** a scheduling failure: the temporary public demo protects writes to its shared SQLite database. You can continue exploring dealerships, availability and existing bookings without any credential. To test booking or cancellation, contact the project owner through your existing review channel for a private demo write token, enter it on the home page and click **Verify token**. If verification rejects the token, check for accidental whitespace or ask for a new token. Never post tokens to public comments or issue trackers. When no token has been entered, Confirm and Cancel controls are disabled so users do not unexpectedly encounter a 403.
+This is **not** a scheduling failure: the temporary public demo protects writes to its shared SQLite database. You can continue exploring dealerships, availability and existing bookings without any credential. To test booking or cancellation, contact the project owner through your existing review channel for a private demo write token, enter it on the home page and click **Verify token**. If verification rejects the token, check for accidental whitespace or ask for a new token. Never post tokens to public comments or issue trackers. Until a token has been verified successfully, Confirm and Cancel controls are disabled so users do not unexpectedly encounter a 403.
 
 ## Interactive conflict/concurrency proof (no write token needed)
 
@@ -124,3 +124,19 @@ Run `PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node 
 Prepare two tabs on the **same dealership, service, date and available start time** before confirming either. Use the protected demo write token in each tab. Confirm in the first tab; without refreshing the second tab, attempt its stale selection. The second request must be rejected with **HTTP 409**, show an explanation that **no appointment was created**, refresh availability and clear the stale selection. This outcome requires the first booking to consume the final eligible technician/bay capacity; multiple qualified resource pairs may otherwise both be legitimately booked. Do not confuse this manual stale-selection test with the independent-process concurrency test.
 
 The reviewer-provided HTML captures `kjlsobnmvx7osfvgfl.549.log` and `kjlsobnmvx7osfvgfl.548.log`, together with server POST 201 then POST 409 and SQLite totals **45 / 33 confirmed / 12 cancelled**, support **Manual Stale-slot Conflict PASS**. The reviewer clicked **Refresh** to synchronize the counter; Refresh does not create appointments. For the automatic assertion see `scripts/stale-slot-browser-test.js` (isolated SQLite, no live mutation).
+
+
+## UI-08–UI-13 current reviewer QA (2026-10-10)
+
+The following are **observed automated results**, not claims of physical-device or screen-reader conformance:
+
+- UI-08 token verification: Chromium PASS (invalid token remains locked; valid token unlocks; editing revokes; stale error cleared). `node scripts/ui08-browser-acceptance.mjs`
+- UI-09 filters: Chromium PASS for 50-record snapshot, confirmed/cancelled, combined filters, search and reset. `node scripts/ui09-browser-acceptance.mjs` (counts depend on the current live database).
+- UI-10 keyboard and modal: 33 Chromium assertions PASS including Tab/Shift+Tab trap, Escape, backdrop, focus restoration, and scroll retention. `node scripts/ui10-keyboard-acceptance.mjs`
+- UI-11 responsive/touch **emulation**: 8/8 viewport cases PASS. Physical Android test intentionally skipped by project owner in this session. `node scripts/ui11-responsive-touch.mjs`
+- UI-12 axe automated WCAG A/AA scan: 0 violations across main/modal at 390/1280px after footer contrast fix. `node scripts/ui12-axe-audit.mjs`. An automated scan cannot certify full WCAG compliance.
+- UI-13 reviewer readiness is tracked separately in `docs/UI13-REVIEWER-READINESS-20261010.md`.
+
+On the Kaggle source checkout, test results are written to the git-ignored `evidence/` directory. A clean public Git checkout will need dependencies and a started local server; these tests do not belong in the browser CDN.
+
+**Notebook isolation warning:** The notebook includes real database seeding and booking steps. It now automatically copies the source into a fresh sandbox, seeds a separate SQLite and runs a separate local server on a dynamically chosen non-3000 port. A complete isolated 8/8 code-cell execution passed on 2026-10-10; live SQLite remained untouched. The final cell stops the isolated server. The executed notebook evidence is available only in the local ignored `evidence/` directory until explicitly packaged.

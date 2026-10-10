@@ -136,3 +136,11 @@ The conflict scenario submits two competing requests sequentially. The concurren
 ## Human-readable booking confirmation
 
 After a successful booking the frontend displays a structured appointment confirmation with customer, vehicle, service and duration, dealership, local start/end times, assigned technician and service bay, and a summary of the resource checks. Technical IDs appear in an expandable reviewer-only details area rather than in the main success text. The API provides an additional `details` object on appointment responses; existing technical IDs and status fields remain unchanged for compatibility. Browser proof: `scripts/confirmation-browser-test.js`, which books into an isolated temporary SQLite database.
+
+## Kaggle reviewer notebook — isolated reproducibility
+
+The notebook at `notebooks/Scenario_A_Reviewer_Demo.ipynb` was executed end-to-end in an isolated Kaggle environment (19 cells / 8 executed code cells; 51/51 backend tests). It copies this repository into a **new sandbox**, installs dependencies, seeds a new SQLite database, launches a separate loopback port, demonstrates 201/200/409/200 booking/idempotency/conflict/read, and checks 1 accepted versus 9 rejected concurrent requests. The final code cell validates SQLite integrity and stops the sandbox server. It does **not** reuse or overwrite the shared public-demo SQLite.
+
+For a fresh Kaggle Notebook, first clone this repository under `/kaggle/working/Keyloop-Scenario-A-Unified-Service-Scheduler`, then open or import the notebook file and run its cells. Kaggle internet access must be enabled for npm dependencies. The reviewer notebook does not require the owner's demo write token or an external tunnel.
+
+See `docs/REVIEWER-TEST-GUIDE.md` and `docs/UI13-REVIEWER-READINESS-20261010.md` for reviewer walkthrough, QA evidence scope and outstanding manual accessibility checks. Browser acceptance scripts `scripts/ui08-*.mjs` through `scripts/ui12-*.mjs` are optional local-browser QA tools, not notebook execution prerequisites; `scripts/ui12-axe-audit.mjs` needs an optional `axe-core` install.
