@@ -121,7 +121,7 @@ Run `PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node 
 
 For a stale-slot scenario, open two tabs on the same dealership, service, future date and start time. With a private demo write token, book the final available resource pair in the first tab; the second tab should receive an unavailable-slot response rather than another confirmed booking. If multiple technician/bay pairs are eligible, two bookings can both be valid. Use a disposable environment for destructive tests.
 
-The repository includes `scripts/browser/stale-slot-browser-test.js`, `scripts/ui08-browser-acceptance.mjs`, `scripts/ui09-browser-acceptance.mjs`, `scripts/ui10-keyboard-acceptance.mjs`, `scripts/ui11-responsive-touch.mjs`, and `scripts/ui12-axe-audit.mjs` for additional browser-focused evidence. These tests may require a local server, Playwright browser installation and specific setup; consult the scripts before executing. Automated browser and accessibility checks do not establish physical-device or full screen-reader conformance.
+The repository includes `scripts/browser/stale-slot-browser-test.js`, `scripts/browser/ui08-browser-acceptance.mjs`, `scripts/browser/ui09-browser-acceptance.mjs`, `scripts/browser/ui10-keyboard-acceptance.mjs`, `scripts/browser/ui11-responsive-touch.mjs`, and `scripts/browser/ui12-axe-audit.mjs` for additional browser-focused evidence. These tests may require a local server, Playwright browser installation and specific setup; consult the scripts before executing. Automated browser and accessibility checks do not establish physical-device or full screen-reader conformance.
 
 ## Reproducible notebook demo
 
