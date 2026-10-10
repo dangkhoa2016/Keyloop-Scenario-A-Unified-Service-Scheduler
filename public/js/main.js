@@ -6,9 +6,32 @@ const visibleAppointments=computed(()=>appointments.value.filter(a=>(appointment
 const tomorrow=new Date(Date.now()+86400000);if(tomorrow.toLocaleDateString('en-US',{weekday:'short',timeZone:'Asia/Ho_Chi_Minh'})==='Sun')tomorrow.setDate(tomorrow.getDate()+1);date.value=tomorrow.toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'});
 async function get(path,options){if(options?.method&&options.method!=='GET'&&token.value.trim()){options.headers={...(options.headers||{}),'X-Demo-Write-Token':token.value.trim()};}const res=await fetch(path,options),json=await res.json();if(!res.ok){const error=new Error(json.error?.message||'Request failed');error.code=json.error?.code;error.status=res.status;throw error;}return json.data;}
 function friendly(e){if(e.code==='DEMO_TOKEN_REQUIRED')return 'This public demo is in read-only mode. Enter the private demo write token to create or cancel appointments. Ask the demo owner for access.';if(e.code==='DEMO_TOKEN_INVALID')return 'That demo token is incorrect or has expired. Re-enter the token supplied by the demo owner, then click Verify token. Your booking was not changed.';if(e.code==='PUBLIC_WRITE_DISABLED')return 'Demo writes are temporarily unavailable. You can still explore availability and existing appointments.';if(e.code==='SLOT_UNAVAILABLE')return 'No appointment was created from this request. That time is no longer available because another booking may have taken the slot or eligible resources are busy. Please choose a different available time.';return e.message||'Something went wrong. Please try again.';}
-let modalTrigger=null;
-function openBookingAccess(){modalTrigger=document.activeElement;accessModal.value=true;nextTick(()=>document.querySelector('[aria-label="Close booking access"]')?.focus());}
-function closeBookingAccess(){accessModal.value=false;nextTick(()=>modalTrigger?.focus());}
+let modalTrigger=null,modalScrollY=0,modalBodyStyle=null;
+function openBookingAccess(){
+ if(accessModal.value)return;
+ modalTrigger=document.activeElement;
+ modalScrollY=window.scrollY;
+ modalBodyStyle={position:document.body.style.position,top:document.body.style.top,width:document.body.style.width,overflow:document.body.style.overflow};
+ document.body.style.position='fixed';
+ document.body.style.top='-'+modalScrollY+'px';
+ document.body.style.width='100%';
+ document.body.style.overflow='hidden';
+ accessModal.value=true;
+ nextTick(()=>document.querySelector('[aria-label="Close booking access"]')?.focus({preventScroll:true}));
+}
+function closeBookingAccess(){
+ if(!accessModal.value)return;
+ accessModal.value=false;
+ nextTick(()=>{
+  if(modalBodyStyle){
+   Object.assign(document.body.style,modalBodyStyle);
+   modalBodyStyle=null;
+  }
+  window.scrollTo({top:modalScrollY,left:0,behavior:'instant'});
+  if(modalTrigger?.isConnected)modalTrigger.focus({preventScroll:true});
+  modalTrigger=null;
+ });
+}
 function accessKeydown(e){
  if(e.key==='Escape'){e.preventDefault();closeBookingAccess();return;}
  if(e.key!=='Tab')return;
