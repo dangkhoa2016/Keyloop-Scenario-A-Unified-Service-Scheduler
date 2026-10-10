@@ -95,3 +95,11 @@ Historical failures remain visible above. No claim of complete T20 accessibility
 - **Verdict: MANUAL STALE-SLOT FLOW PASS** for observed UI, HTTP sequence and persisted record count. Do not infer a full browser-network trace or global resource-overlap proof from these two HTML captures alone.
 - Follow-up UX: conflict notice now states clearly that **the rejected request created no appointment**, asks the reviewer to select another available time, and only applies to the `SLOT_UNAVAILABLE` application error. The existing isolated Playwright stale-slot assertion has been aligned with that copy; browser rerun requires working Chromium OS libraries on Kaggle.
 - This verification does not close unrelated manual accessibility coverage (Narrator/Android/keyboard/contrast).
+
+## Stale-slot tab counter refresh UX — 2026-10-10
+
+The reviewer supplied updated DOM captures `kjlsobnmvx7osfvgfl.550.log` and `kjlsobnmvx7osfvgfl.551.log`. The winning tab displayed **46 total, 34 confirmed, 12 cancelled**, including newly confirmed `apt_3c2d8053-2e40-474f-9176-14c15bd55806` (Air Conditioning, 2026-10-12 14:30–16:00). The losing stale tab displayed the corrected no-booking-created message and cleared availability, but its appointment counter still read **45 / 33 / 12**. This was an observable stale *client list* after the failed POST, not evidence of a second write.
+
+**Fix:** For `SLOT_UNAVAILABLE`, the Vue booking error path now refreshes appointment rows and aggregate statistics before refreshing available slots. Other errors keep their existing handling. The empty-slot UI now explains that no times are available for that service/date and advises changing date or service. The isolated Playwright stale-slot script now additionally asserts that the displayed appointment count matches SQLite after the competing booking.
+
+**Verification:** `node --check` for both changed JavaScript files and full `npm test` **51/51 PASS**. Live SQLite stayed at **46 records (34 confirmed, 12 cancelled)**, integrity `ok`. Browser E2E for the revised assertion is **PENDING**, as Kaggle Chromium currently lacks shared libraries `libatk-1.0.so.0`, `libatk-bridge-2.0.so.0`, `libXcomposite.so.1`, and `libatspi.so.0`; do not represent the new browser assertion as PASS until it runs.
