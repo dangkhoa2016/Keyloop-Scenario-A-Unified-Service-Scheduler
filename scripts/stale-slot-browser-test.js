@@ -16,7 +16,7 @@ try{
  book(db,{customerId:'cus_002',vehicleId:'veh_002',dealershipId:'dlr_001',serviceTypeId:'svc_brake',startAt},'other-customer-stale');
  const before=db.prepare('SELECT COUNT(*) n FROM appointments').get().n;
  await page.getByRole('button',{name:'Confirm appointment'}).click();
- await page.getByText('That slot was just booked or resources are unavailable. Select another available time.').waitFor();
+ await page.getByText('No appointment was created from this request. That time is no longer available because another booking may have taken the slot or eligible resources are busy. Please choose a different available time.').waitFor();
  const remaining=await page.locator('button').filter({hasText:/^09:00$/}).count();
  const after=db.prepare('SELECT COUNT(*) n FROM appointments').get().n;
  if(remaining!==0||before!==after||errors.length)throw Error(JSON.stringify({remaining,before,after,errors}));

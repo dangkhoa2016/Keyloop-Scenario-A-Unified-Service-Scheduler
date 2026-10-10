@@ -85,3 +85,13 @@ Historical failures remain visible above. No claim of complete T20 accessibility
 - Existing `tests/observability-security.test.js`: correlation between `X-Request-ID` and JSON error request ID, no demo token canary in response/structured log. This is a targeted redaction test, not a comprehensive secret-leak audit.
 - **Full isolated `npm test` regression: 51/51 PASS, 0 failed, 0 skipped**.
 - Operational hardening **PARTIAL**: structured request ID, method/path/status/latency fields exist, but production-grade historical metrics (route p50/p95, aggregate counters), controlled busy retries, comprehensive redaction testing and manual screen reader/Android QA are not finished.
+
+## Manual two-tab stale-slot verification — 2026-10-10 ICT
+
+- Evidence submitted by the reviewer: `kjlsobnmvx7osfvgfl.549.log` (successful booking confirmation) and `kjlsobnmvx7osfvgfl.548.log` (stale-tab rejection view). The source files are reviewer-provided HTML captures, not browser-network HAR exports.
+- Confirmed booking: Air Conditioning, Central Auto Service, 2026-10-12 13:00–14:30 Asia/Ho_Chi_Minh, Quinn / Climate & Alignment; appointment `apt_ce594d32-c54f-41ab-acfc-9598c9fb8dbf`.
+- Application log: one `POST /api/v1/appointments` HTTP **201**, followed by one competing `POST /api/v1/appointments` HTTP **409**, then availability refresh. The stale tab displayed a conflict notice, removed the selected slot from availability and disabled confirmation until another time was chosen.
+- Reviewer explicitly clicked **Refresh** to update the appointment counter. Refresh is read-only. Live state observed: **45 total = 33 confirmed + 12 cancelled**, compared with 44 total before the manual test. SQLite `PRAGMA integrity_check` was `ok`.
+- **Verdict: MANUAL STALE-SLOT FLOW PASS** for observed UI, HTTP sequence and persisted record count. Do not infer a full browser-network trace or global resource-overlap proof from these two HTML captures alone.
+- Follow-up UX: conflict notice now states clearly that **the rejected request created no appointment**, asks the reviewer to select another available time, and only applies to the `SLOT_UNAVAILABLE` application error. The existing isolated Playwright stale-slot assertion has been aligned with that copy; browser rerun requires working Chromium OS libraries on Kaggle.
+- This verification does not close unrelated manual accessibility coverage (Narrator/Android/keyboard/contrast).
