@@ -17,6 +17,35 @@ An assessment implementation of **resource-constrained vehicle service schedulin
 - Tailwind Play CDN is intended for development/demo only, not a production deployment.
 - All customers and vehicle data are synthetic.
 
+## Run and test with Kaggle Notebook (no local setup)
+
+**Recommended for reviewers:** [Open the notebook source on GitHub](notebooks/Scenario_A_Reviewer_Demo.ipynb). In [Kaggle Code](https://www.kaggle.com/code), choose **New Notebook**, then **File → Import Notebook** (or use Kaggle's notebook upload/import control) and select the downloaded `Scenario_A_Reviewer_Demo.ipynb` from this repository.
+
+1. Set the notebook accelerator to **None (CPU)** and **Internet ON** in Kaggle notebook settings. You do not need a GPU, dataset upload, Docker, a demo write token, or Google Drive.
+2. Confirm the runtime offers **Node.js 24+**, Python, `git`, and `npm`. Run the following in a Python cell if needed:
+
+   ```python
+   import subprocess
+   print(subprocess.run(["node", "--version"], capture_output=True, text=True).stdout.strip())
+   print(subprocess.run(["npm", "--version"], capture_output=True, text=True).stdout.strip())
+   ```
+
+3. Use **Run All**. The notebook automatically clones the **public GitHub `main` branch** if the checkout is absent, creates a separate disposable source/SQLite workspace, installs dependencies, seeds synthetic records, starts an isolated local Hono server, executes all demonstrations, then stops the server.
+4. Verify these output markers:
+
+   | Check | Expected evidence |
+   |---|---|
+   | Automated regression | **51 passed, 0 failed** |
+   | Booking → replay → conflict → persisted read | HTTP **201, 200, 409, 200** |
+   | Sequential booking conflict simulation | **1 confirmed, 1 rejected** |
+   | Ten-process concurrency simulation | **1 confirmed, 9 rejected** |
+   | SQLite integrity / resource non-overlap | **ok / true** |
+   | Final teardown | `NOTEBOOK_ISOLATED_DB=PASS` and `ISOLATED_SERVER_STOPPED=PASS` |
+
+5. Optional: use **Save Version → Save & Run All** to retain Kaggle's generated outputs and share your notebook version. For manual browser testing, follow [Reviewer Test Guide](docs/REVIEWER-TEST-GUIDE.md) and launch a separately authorized demo; notebook port is loopback-only and intentionally ephemeral.
+
+**Isolation policy:** The notebook never migrates, seeds, resets, or writes to the shared public-demo SQLite database. It clones source into a unique sandbox and creates its own database/HTTP listener. Internet access is necessary for GitHub and npm. It was verified through an 8/8 code-cell Jupyter execution starting from a fresh public GitHub clone; actual Kaggle publication is separate from that test.
+
 ## Start from clean checkout
 
 ```bash
