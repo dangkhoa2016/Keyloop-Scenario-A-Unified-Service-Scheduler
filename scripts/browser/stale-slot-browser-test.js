@@ -16,9 +16,11 @@ try{
  book(db,{customerId:'cus_002',vehicleId:'veh_002',dealershipId:'dlr_001',serviceTypeId:'svc_brake',startAt},'other-customer-stale');
  const before=db.prepare('SELECT COUNT(*) n FROM appointments').get().n;
  await page.getByRole('button',{name:'Confirm appointment'}).click();
- await page.getByText('That slot was just booked or resources are unavailable. Select another available time.').waitFor();
+ await page.getByText('No appointment was created from this request. That time is no longer available because another booking may have taken the slot or eligible resources are busy. Please choose a different available time.').waitFor();
  const remaining=await page.locator('button').filter({hasText:/^09:00$/}).count();
  const after=db.prepare('SELECT COUNT(*) n FROM appointments').get().n;
- if(remaining!==0||before!==after||errors.length)throw Error(JSON.stringify({remaining,before,after,errors}));
- console.log('STALE_SLOT_BROWSER=PASS',JSON.stringify({before,after,slotRemoved:true,pageErrors:errors}));
+ await page.getByText(new RegExp('^'+after+' appointments in the live database')).waitFor();
+ const displayed=await page.getByRole('region',{name:'Appointments'}).innerText();
+ if(!displayed.includes(after+' appointments in the live database')||remaining!==0||before!==after||errors.length)throw Error(JSON.stringify({remaining,before,after,displayed:displayed.slice(0,120),errors}));
+ console.log('STALE_SLOT_BROWSER=PASS',JSON.stringify({before,after,slotRemoved:true,appointmentListUpdated:true,pageErrors:errors}));
 }catch(e){console.error('STALE_SLOT_BROWSER=FAIL',e.message);process.exitCode=1}finally{await browser.close();await new Promise(r=>server.close(r));db.close();rmSync(dir,{recursive:true,force:true})}
