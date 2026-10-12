@@ -115,7 +115,7 @@ The **Interactive engineering demo** uses disposable SQLite databases. Results i
 
 The **Service appointments** heading instead reports true live totals via `GET /api/v1/appointments/stats`. This endpoint aggregates all persisted appointments in live SQLite and reports `total`, `confirmed`, and `cancelled`, independently of the newest 100 displayed records and any client-side filters. For example, a live count of 42 appointments may remain at 42 after running either simulation; this is intentional, not a missing booking. Actual authorized booking/cancellation changes live statistics after refresh.
 
-Run `PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scripts/simulation-live-isolation-browser-test.js` to verify the interactive ten-request demonstration while checking live appointment counters before and after the run. This test writes **only to isolated sandbox SQLite**, does not require the demo write token, and should leave live counts unchanged. The simulator has a cooldown, so rerun later if another simulation was just performed.
+Run `PLAYWRIGHT_BROWSERS_PATH=/kaggle/working/.keyloop-playwright-browsers node scripts/browser/simulation-live-isolation-browser-test.js` to verify the interactive ten-request demonstration while checking live appointment counters before and after the run. This test writes **only to isolated sandbox SQLite**, does not require the demo write token, and should leave live counts unchanged. The simulator has a cooldown, so rerun later if another simulation was just performed.
 
 ## Stale availability and accessibility checks
 
