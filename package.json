@@ -37,7 +37,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@hono/node-server": "^2.1.4",
+    "@hono/node-server": "^2.1.5",
     "better-sqlite3": "^13.0.3",
     "hono": "^4.13.13",
     "luxon": "^3.7.2",
